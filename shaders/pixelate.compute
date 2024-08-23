@@ -1,0 +1,136 @@
+//metastart
+//name: pixelate 
+//uniform<float>_pixelInFactor: 1.84
+//uniform<float>_randomPixelFactor: 1.5
+//uniform<float>_brightnessFactor: 0.2067
+//uniform<int>_pixelateFactor: 12
+//metaend
+
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D inputImage;
+layout(rgba32f, binding = 1) uniform image2D outputImage;
+
+uniform float pixelInFactor;
+uniform float randomPixelFactor;
+uniform float brightnessFactor;
+uniform int pixelateFactor;
+
+/*
+	static.frag
+	by Spatial
+	05 July 2013
+*/
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash(uint x)
+{
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash(uvec2 v) { return hash(v.x ^ hash(v.y)); }
+uint hash(uvec3 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z)); }
+uint hash(uvec4 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w)); }
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct(uint m)
+{
+	const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+	const uint ieeeOne = 0x3F800000u; // 1.0 in IEEE binary32
+
+	m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+	m |= ieeeOne;                          // Add fractional part to 1.0
+
+	float  f = uintBitsToFloat(m);       // Range [1:2]
+	return f - 1.0;                        // Range [0:1]
+}
+
+
+
+// Pseudo-random value in half-open range [0:1].
+float rand(float x) { return floatConstruct(hash(floatBitsToUint(x))); }
+float rand(vec2  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float rand(vec3  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float rand(vec4  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+
+int randrange(int min, int max, vec2 co)
+{
+	return int(floor(rand(co) * (float(max) - float(min) + 1.0) + float(max)));
+}
+
+vec4 getPixel(ivec2 pos)
+{
+	return imageLoad(inputImage, ivec2(pixelateFactor * floor(pos.x / pixelateFactor), pixelateFactor * floor(pos.y / pixelateFactor)));
+}
+
+float sRGBtoLin(float colorChannel)
+{
+	// Send this function a decimal sRGB gamma encoded color value
+	// between 0.0 and 1.0, and it returns a linearized value.
+
+	if (colorChannel <= 0.04045)
+	{
+		return colorChannel / 12.92;
+	}
+	else
+	{
+		return pow(((colorChannel + 0.055) / 1.055), 2.4);
+	}
+}
+
+float luminance(vec3 pixel)
+{
+	return (0.2126 * sRGBtoLin(pixel.r) + 0.7152 * sRGBtoLin(pixel.g) + 0.0722 * sRGBtoLin(pixel.b));
+}
+
+void main()
+{
+	ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = ivec2(gl_NumWorkGroups.xy);
+
+	ivec2 halfsize;
+
+    ivec2 search = ivec2(6, 6);
+	float lsum = 0.0;
+	for (int i = 0; i < search.y; i++)
+	{
+		for (int j = 0; j < search.x; j++)
+		{
+            ivec2 scoords = ivec2(pixelateFactor * floor(texelCoord.x / pixelateFactor), pixelateFactor * floor(texelCoord.y / pixelateFactor));
+
+			ivec2 pixel = ivec2(scoords.x - (search.x / 2 + j) * pixelateFactor, scoords.y - (search.y / 2 + i) * pixelateFactor);
+
+			lsum += luminance(imageLoad(inputImage, pixel).rgb);
+		}
+	}
+
+    if(lsum > 0.5)
+    {
+        halfsize = ivec2(20, 80);
+    }
+    else
+    {
+        halfsize = ivec2(25, 25);
+    }
+
+	vec3 pixelin = getPixel(texelCoord).rgb;
+	vec3 randpixel = imageLoad(
+		inputImage,
+		ivec2(
+			randrange((texelCoord - halfsize).x, (texelCoord + halfsize).x, texelCoord),
+			randrange((texelCoord - halfsize).y, (texelCoord + halfsize).y, texelCoord)
+		)
+	).rgb;
+
+	vec4 value = vec4(pixelin * pixelInFactor * randpixel * randomPixelFactor + pixelin * brightnessFactor, 1.0);
+
+	imageStore(outputImage, texelCoord, value);
+}

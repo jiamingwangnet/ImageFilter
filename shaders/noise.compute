@@ -1,0 +1,78 @@
+//metastart
+//name: noise 
+//uniform<float>_minBrightness: 0.5
+//uniform<float>_maxBrightness: 0.8
+//uniform<int>_pixelSize: 5
+//metaend
+
+#version 460
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D inputImage;
+layout(rgba32f, binding = 1) uniform image2D outputImage;
+
+uniform float minBrightness;
+uniform float maxBrightness;
+uniform int pixelSize;
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash(uint x)
+{
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash(uvec2 v) { return hash(v.x ^ hash(v.y)); }
+uint hash(uvec3 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z)); }
+uint hash(uvec4 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w)); }
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct(uint m)
+{
+	const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+	const uint ieeeOne = 0x3F800000u; // 1.0 in IEEE binary32
+
+	m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+	m |= ieeeOne;                          // Add fractional part to 1.0
+
+	float  f = uintBitsToFloat(m);       // Range [1:2]
+	return f - 1.0;                        // Range [0:1]
+}
+
+
+
+// Pseudo-random value in half-open range [0:1].
+float rand(float x) { return floatConstruct(hash(floatBitsToUint(x))); }
+float rand(vec2  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float rand(vec3  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float rand(vec4  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+
+int randrange(int min, int max, vec2 co)
+{
+	return int(floor(rand(co) * (float(max) - float(min) + 1.0) + float(max)));
+}
+
+float clamp(float value, float minf, float maxf)
+{
+	return min(max(value, minf), maxf);
+}
+
+void main()
+{
+	ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = ivec2(gl_NumWorkGroups.xy);
+
+	vec4 pixel = imageLoad(inputImage, texelCoord);
+
+	vec2 adjustedCoord = vec2(pixelSize * floor(texelCoord.x / pixelSize), pixelSize * floor(texelCoord.y / pixelSize));
+
+	vec3 value = pixel.rgb * clamp(rand(vec2(adjustedCoord)), minBrightness, maxBrightness);
+
+	imageStore(outputImage, texelCoord, vec4(value.rgb, 1.0));
+}

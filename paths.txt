@@ -1,0 +1,2 @@
+D:/dev/dev/Side/ImageFilter/station1.JPG
+D:/dev/dev/Side/ImageFilter/shaders/pixelate.compute
