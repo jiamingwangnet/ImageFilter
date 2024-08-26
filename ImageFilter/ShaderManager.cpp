@@ -1,23 +1,17 @@
 #include "include/ShaderManager.h"
-#include <stdexcept>
+#include "include/FragmentShader.h"
 
-std::unordered_map<std::string, std::unique_ptr<ComputeShader>> ShaderManager::storage;
+std::unordered_map<std::string, std::unique_ptr<ShaderBase>> ShaderManager::storage;
 
-void ShaderManager::CreateShader(const std::string& path, const std::string& name)
+void ShaderManager::CreateShader(const std::string& path, const std::string& name, SHADER_TYPE shaderType)
 {
-	storage.insert({ name, std::make_unique<ComputeShader>(path) });
-}
-
-ComputeShader& ShaderManager::GetShader(const std::string& name)
-{
-	try
+	switch (shaderType)
 	{
-		ComputeShader& shader = *(storage.at(name));
-
-		return shader;
-	}
-	catch (const std::out_of_range& error)
-	{
-		throw std::out_of_range{ (std::string)"Can't find shader " + name };
+	case SHADER_TYPE::COMPUTE:
+		storage.insert({ name, std::make_unique<ComputeShader>(path) });
+		break;
+	case SHADER_TYPE::FRAGMENT:
+		storage.insert({ name, std::make_unique<FragmentShader>(path) });
+		break;
 	}
 }

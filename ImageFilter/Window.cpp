@@ -76,6 +76,8 @@ void Window::MainLoop()
 
 	glfwSwapInterval(1);
 
+	imageManager.BeginCamThread();
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -95,6 +97,8 @@ void Window::MainLoop()
 		gui.RenderEnd();
 		glfwSwapBuffers(window); // TODO: only swap buffers when app state was changed
 	}
+
+	imageManager.EndCamThread();
 }
 
 void Window::FramebufferSizeCallback(GLFWwindow* window, int width, int height)

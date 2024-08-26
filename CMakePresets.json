@@ -29,7 +29,9 @@
             "CMAKE_BUILD_TYPE": "Debug",
             "GLM_INCLUDE_PATH": "D:/dev/dev/GLM/g-truc-glm-bf71a83",
             "GLFW_BIN_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/build/src/Debug",
-            "GLFW_INCLUDE_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/include"
+            "GLFW_INCLUDE_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/include",
+            "OPENCV_LIB_PATH": "D:/dev/dev/opencv/build/x64/vc16/lib",
+            "OPENCV_INCLUDE_PATH": "D:/dev/dev/opencv/build/include"
           }
         },
         {
@@ -40,10 +42,12 @@
             "CMAKE_BUILD_TYPE": "Release",
             "GLM_INCLUDE_PATH": "D:/dev/dev/GLM/g-truc-glm-bf71a83",
             "GLFW_BIN_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/build/src/Release",
-            "GLFW_INCLUDE_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/include"
+            "GLFW_INCLUDE_PATH": "D:/dev/dev/GLFW-3.3.9/glfw-3.3.9/include",
+            "OPENCV_LIB_PATH": "D:/dev/dev/opencv/build/x64/vc16/lib",
+            "OPENCV_INCLUDE_PATH": "D:/dev/dev/opencv/build/include"
           }
         },
-        {
+        /*{
             "name": "x86-debug",
             "displayName": "x86 Debug",
             "inherits": "windows-base",
@@ -62,6 +66,6 @@
           "cacheVariables": {
             "CMAKE_BUILD_TYPE": "Release"
           }
-        }
+        }*/
     ]
 }

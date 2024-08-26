@@ -21,6 +21,7 @@ public:
 		std::string imagePath = "";
 		std::string shaderPath = "";
 		std::string shaderName = "";
+		std::string outputPath = "";
 	};
 	struct ShaderData
 	{
@@ -28,6 +29,9 @@ public:
 		std::string path;
 
 		std::unordered_map<std::string, UniformValue> uniforms;
+
+		bool found = true;
+		bool winOpen = true;
 	};
 public:
 	GUI(Window& window)
@@ -47,4 +51,6 @@ private:
 	InputData data;
 	std::vector<ShaderData> shaders;
 	Window& window;
+	bool useCamera = false;
+	std::string activeShader = "";
 };

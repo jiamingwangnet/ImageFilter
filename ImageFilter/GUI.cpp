@@ -4,6 +4,7 @@
 #include "include/Window.h"
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 void GUI::Init()
 {
@@ -13,8 +14,31 @@ void GUI::Init()
 	io = &ImGui::GetIO();
 	io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
+	// disable ini file
+	io->IniFilename = nullptr;
+
 	ImGui_ImplGlfw_InitForOpenGL(window.GetWindow(), true);
 	ImGui_ImplOpenGL3_Init("#version 460");
+
+	ImGui::PushStyleColor(ImGuiCol_Header, 0xff151515);
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0xff171717);
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, 0xff1f1f1f);
+
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, 0xff151515);
+	ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, 0xff171717);
+	ImGui::PushStyleColor(ImGuiCol_FrameBgActive, 0xff1f1f1f);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, 0xff151515);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, 0xff171717);
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, 0xff1f1f1f);
+
+	ImGui::PushStyleColor(ImGuiCol_ResizeGrip, 0xff151515);
+	ImGui::PushStyleColor(ImGuiCol_ResizeGripHovered, 0xff171717);
+	ImGui::PushStyleColor(ImGuiCol_ResizeGripActive, 0xff1f1f1f);
+
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, 0xff060606);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, 0xff0f0f0f);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, 0xff010101);
 }
 
 void GUI::RenderStart()
@@ -26,28 +50,74 @@ void GUI::RenderStart()
 
 void GUI::CreateGui()
 {
+	static bool firstRender = true;
+
+	if (firstRender)
+	{
+		ImGui::SetNextWindowPos({ 10.0, 10.0 });
+		ImGui::SetNextWindowSize({ 400.0, 600.0 });
+		firstRender = false;
+	}
+
 	ImGui::Begin("File");
 
 	if (ImGui::CollapsingHeader("Image File"))
 	{
-		ImGui::Text("Image File");
+		ImGui::Text("Use Camera");
 		ImGui::SameLine();
-		ImGui::InputText("##ImageFile", &data.imagePath);
-
-		if (ImGui::Button("Open"))
+		ImGui::Checkbox("##UseCamera", &useCamera);
+		if (!useCamera)
 		{
 			window.QueueFunc(
 				[this](Renderer& renderer, ImageManager& imageManager)
 				{
-					imageManager.Load(data.imagePath);
+					imageManager.CloseCamera();
+				}
+			);
+
+			ImGui::Text("Image File");
+			ImGui::SameLine();
+			ImGui::InputText("##ImageFile", &data.imagePath);
+
+			if (ImGui::Button("Open"))
+			{
+				window.QueueFunc(
+					[this](Renderer& renderer, ImageManager& imageManager)
+					{
+						imageManager.Load(data.imagePath);
+					}
+				);
+			}
+		}
+		else
+		{
+			window.QueueFunc(
+				[this](Renderer& renderer, ImageManager& imageManager)
+				{
+					imageManager.CamCapture(0);
 				}
 			);
 		}
 
+		ImGui::Text("Save Path");
+		ImGui::SameLine();
+		ImGui::InputText("##SavePath", &data.outputPath);
+		if (ImGui::Button("Save"))
+		{
+			window.QueueFunc(
+				[this](Renderer& renderer, ImageManager& imageManager)
+				{
+					imageManager.ApplyEffect(activeShader);
+					imageManager.SaveOutput(data.outputPath);
+				}
+			);
+		}
+
+
 		ImGui::NewLine();
 	}
 
-	if (ImGui::CollapsingHeader("Shader File"))
+	if (ImGui::CollapsingHeader("Compute Shader File"))
 	{
 		ImGui::Text("Shader Path");
 		ImGui::SameLine();
@@ -56,16 +126,23 @@ void GUI::CreateGui()
 		if (ImGui::Button("Add") && data.shaderPath != "")
 		{
 			std::ifstream file{ data.shaderPath };
-			std::stringstream sourceStream;
-			sourceStream << file.rdbuf();
+			if (file)
+			{
+				std::stringstream sourceStream;
+				sourceStream << file.rdbuf();
 
-			ShaderData newShader;
-			newShader.name = ComputeShader::MetaGetName(sourceStream.str());
-			newShader.path = data.shaderPath;
+				ShaderData newShader;
+				newShader.name = ComputeShader::MetaGetName(sourceStream.str());
+				newShader.path = data.shaderPath;
 
-			ShaderManager::CreateShader(data.shaderPath, newShader.name);
+				ShaderManager::CreateShader(data.shaderPath, newShader.name, ShaderManager::SHADER_TYPE::COMPUTE);
 
-			shaders.push_back(newShader);
+				shaders.push_back(newShader);
+			}
+			else
+			{
+				shaders.push_back(ShaderData{ .path = data.shaderPath, .found = false});
+			}
 		}
 
 		ImGui::NewLine();
@@ -79,13 +156,32 @@ void GUI::CreateGui()
 		ShaderData& shader = *sIt;
 		ImGui::PushID(id);
 
+		if (!shader.found)
+		{
+			ImGui::Begin(shader.path.c_str(), &shader.winOpen);
+			
+			ImGui::Text("Shader Not Found.");
+
+			ImGui::End();
+
+			ImGui::PopID();
+			id++;
+
+			if (!shader.winOpen)
+				sIt = shaders.erase(sIt);
+			else
+				++sIt;
+
+			continue;
+		}
+
 		ImGui::Begin(shader.name.c_str());
 
 		ImGui::Text(shader.path.c_str());
 
 		ImGui::NewLine();
 
-		ComputeShader& compute = ShaderManager::GetShader(shader.name);
+		ComputeShader& compute = ShaderManager::GetShader<ComputeShader>(shader.name);
 
 		for (const std::pair<std::string, ComputeShader::ValueTypes>& uniform : compute.GetUniforms())
 		{
@@ -126,15 +222,20 @@ void GUI::CreateGui()
 		ImGui::NewLine();
 
 		bool del = ImGui::Button("Delete");
-
+		
 		if (ImGui::Button("Run"))
 		{
-			window.QueueFunc(
-				[&shader](Renderer& renderer, ImageManager& imageManager)
-				{
-					imageManager.ApplyEffect(shader.name);
-				}
-			);
+			if (!useCamera)
+			{
+				window.QueueFunc(
+					[&shader](Renderer& renderer, ImageManager& imageManager)
+					{
+						imageManager.ApplyEffect(shader.name);
+					}
+				);
+			}
+
+			activeShader = shader.name;
 		}
 
 		if (ImGui::Button("Recompile"))
@@ -142,7 +243,7 @@ void GUI::CreateGui()
 			window.QueueFunc(
 				[&shader](Renderer& renderer, ImageManager& imageManager)
 				{
-					ShaderManager::GetShader(shader.name).Build();
+					ShaderManager::GetShader<ComputeShader>(shader.name).Build();
 				}
 			);
 		}
@@ -153,9 +254,22 @@ void GUI::CreateGui()
 		id++;
 
 		if (del)
+		{
 			sIt = shaders.erase(sIt);
+			if (activeShader == shader.name) activeShader = "";
+		}
 		else
 			++sIt;
+	}
+
+	if (useCamera && activeShader != "")
+	{
+		window.QueueFunc(
+			[this](Renderer& renderer, ImageManager& imageManager)
+			{
+				imageManager.ApplyEffect(activeShader);
+			}
+		);
 	}
 }
 

@@ -25,13 +25,6 @@ void Renderer::Init(const Window* window)
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-
-	float winWidth = (float)window->GetWidth();
-	float winHeight = (float)window->GetHeight();
-
-	const float size = 1.0f/500.0f;
-
-	projection = glm::ortho(-(winWidth / 2.0f) * size, winWidth / 2.0f * size, winHeight / 2.0f * size, -(winHeight / 2.0f) * size, -1000.0f, 1000.0f); // sets 0, 0 to the middle
 	
 	InputManager::BindScroll([this](double x, double y)
 		{
@@ -51,6 +44,13 @@ void Renderer::Init(const Window* window)
 
 void Renderer::RenderImage(const Window& window, const ImageManager::Image& image)
 {
+	float winWidth = (float)window.GetWidth();
+	float winHeight = (float)window.GetHeight();
+
+	const float size = 1.0f / 500.0f;
+
+	projection = glm::ortho(-(winWidth / 2.0f) * size, winWidth / 2.0f * size, winHeight / 2.0f * size, -(winHeight / 2.0f) * size, -1000.0f, 1000.0f); // sets 0, 0 to the middle
+
 	glm::mat4 model{ 1.0f };
 
 	model = glm::translate(model, glm::vec3{ position.x, position.y, 0.0f});
