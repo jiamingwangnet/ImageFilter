@@ -15,10 +15,15 @@ public:
 	void BeginReadBuf();
 	void EndReadBuf();
 
+	void UpscaleImage(bool v) { 
+		upscale = v; 
+	}
+	bool isUpscaling() const { return upscale; }
+
 	bool isOpen() const { return open; }
 
-	int GetWidth() const { return 2 * cap.get(cv::CAP_PROP_FRAME_WIDTH); }
-	int GetHeight() const { return 2 * cap.get(cv::CAP_PROP_FRAME_HEIGHT); }
+	int GetWidth() const { return 2 / (-upscale + 2) * cap.get(cv::CAP_PROP_FRAME_WIDTH); }
+	int GetHeight() const { return 2 / (-upscale + 2) * cap.get(cv::CAP_PROP_FRAME_HEIGHT); }
 
 private:
 	cv::Mat src;
@@ -31,4 +36,6 @@ private:
 	bool end = false;
 
 	std::vector<unsigned char> upscaled;
+
+	bool upscale = true;
 };

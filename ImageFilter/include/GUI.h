@@ -52,5 +52,6 @@ private:
 	std::vector<ShaderData> shaders;
 	Window& window;
 	bool useCamera = false;
+	bool upscale = true;
 	std::string activeShader = "";
 };

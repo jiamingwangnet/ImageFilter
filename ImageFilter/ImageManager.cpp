@@ -3,7 +3,6 @@
 #include "include/ComputeShader.h"
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
-#include <glad/gl.h>
 #include <iostream>
 
 void ImageManager::Load(const std::string& path)

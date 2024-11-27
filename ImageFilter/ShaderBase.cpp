@@ -103,7 +103,7 @@ int ShaderBase::MetaGetUniformInt(const std::string& source, const std::string& 
 {
 	ValueTypes type;
 	std::string value;
-	ParseUniform(source, name, type, value);
+	if(!ParseUniform(source, name, type, value))return 0;
 
 	return std::stoi(value);
 }
@@ -112,7 +112,7 @@ float ShaderBase::MetaGetUniformFloat(const std::string& source, const std::stri
 {
 	ValueTypes type;
 	std::string value;
-	ParseUniform(source, name, type, value);
+	if(!ParseUniform(source, name, type, value))return 0.0f;
 
 	return std::stof(value);
 }

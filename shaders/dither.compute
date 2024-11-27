@@ -1,0 +1,157 @@
+//metastart
+//name: pixels 
+//uniform<int>_pixelSize: 2
+//uniform<int>_colorStep: 5.0
+//uniform<float>_contrast: 0.3
+//uniform<float>_noiseIntensity: 0.06
+//uniform<float>_brightness: 0.3
+//uniform<int>_subpixelNoise: 0
+//uniform<float>_ditherStrength: 2.0
+//uniform<float>_ditherDarkness: 0.2
+//metaend
+
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D inputImage;
+layout(rgba32f, binding = 1) uniform image2D outputImage;
+
+uniform int pixelSize;
+uniform float colorStep;
+uniform float contrast;
+uniform float brightness;
+uniform float noiseIntensity;
+uniform int subpixelNoise;
+uniform float ditherStrength;
+uniform float ditherDarkness;
+
+/*
+	static.frag
+	by Spatial
+	05 July 2013
+*/
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash(uint x)
+{
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash(uvec2 v) { return hash(v.x ^ hash(v.y)); }
+uint hash(uvec3 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z)); }
+uint hash(uvec4 v) { return hash(v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w)); }
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct(uint m)
+{
+	const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+	const uint ieeeOne = 0x3F800000u; // 1.0 in IEEE binary32
+
+	m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+	m |= ieeeOne;                          // Add fractional part to 1.0
+
+	float  f = uintBitsToFloat(m);       // Range [1:2]
+	return f - 1.0;                        // Range [0:1]
+}
+
+
+
+// Pseudo-random value in half-open range [0:1].
+float won_Random(float x) { return floatConstruct(hash(floatBitsToUint(x))); }
+float won_Random(vec2  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float won_Random(vec3  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+float won_Random(vec4  v) { return floatConstruct(hash(floatBitsToUint(v))); }
+
+float won_RandRange(float min, float max, vec2 seed)
+{
+	return clamp(floor(won_Random(seed) * (float(max) - float(min) + 1.0) + float(min)), min, max); // clamp incase random returns 1
+}
+
+float won_RandRange(float min, float max, vec3 seed)
+{
+	return clamp(floor(won_Random(seed) * (float(max) - float(min) + 1.0) + float(min)), min, max); // clamp incase random returns 1
+}
+
+float won_RandRange(float min, float max, vec4 seed)
+{
+	return clamp(floor(won_Random(seed) * (float(max) - float(min) + 1.0) + float(min)), min, max); // clamp incase random returns 1
+}
+
+float won_RandRange(float min, float max, float seed)
+{
+	return clamp(floor(won_Random(seed) * (float(max) - float(min) + 1.0) + float(min)), min, max); // clamp incase random returns 1
+}
+
+ivec2 pixelate(ivec2 fragCoord)
+{
+	return ivec2(pixelSize * floor(fragCoord / ivec2(pixelSize, pixelSize)));
+}
+
+vec4 won_ColorLimiterByParts(vec4 cinput, float parts)
+{
+	return vec4(floor(cinput.rgb * parts)/(parts - 1.0), 1.0);
+}
+
+vec4 won_NoiseCL(vec2 seed, float min, float max)
+{
+	float s0 = won_Random(seed);
+	float s1 = won_Random(seed * won_Random(seed));
+	float s2 = won_Random(seed * won_Random(seed * won_Random(seed)));
+
+	return vec4(won_RandRange(min, max, s0), won_RandRange(min, max, s1), won_RandRange(min, max, s2), 1.0);
+}
+
+vec4 won_BayerDither8x8(vec4 cinput, vec2 fragCoords, float strength)
+{
+	int x = clamp(int(mod(fragCoords.x, 8.0)), 0, 8);
+	int y = clamp(int(mod(fragCoords.y, 8.0)), 0, 8);
+	int idx = x + y * 8;
+	
+	int dither[8 * 8] = {
+     0, 32, 8, 40, 2, 34, 10, 42, /* 8x8 Bayer ordered dithering */
+    48, 16, 56, 24, 50, 18, 58, 26, /* pattern. Each input pixel */
+    12, 44, 4, 36, 14, 46, 6, 38, /* is scaled to the 0..63 range */
+    60, 28, 52, 20, 62, 30, 54, 22, /* before looking in this table */
+     3, 35, 11, 43, 1, 33, 9, 41, /* to determine the action. */
+    51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47, 7, 39, 13, 45, 5, 37,
+    63, 31, 55, 23, 61, 29, 53, 21 }; 
+
+	cinput *= 255.0;
+	cinput += dither[idx] * strength;
+
+	return vec4(cinput.rgb / 255.0, 1.0);
+}
+
+vec4 getPixel(ivec2 pos)
+{
+	return imageLoad(inputImage, pixelate(pos));
+}
+
+const float c1 = 259.0/256.0;
+const float c2 = 255.0/256.0;
+
+void main()
+{
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = ivec2(gl_NumWorkGroups.xy);
+
+    ivec2 pcoord = pixelate(texelCoord);
+    vec4 c = getPixel(texelCoord);
+    vec4 sc = (1 - subpixelNoise) * c + subpixelNoise * imageLoad(inputImage, texelCoord);
+    
+    float f = (c1 * (contrast + c2)) / (c2 * (c2 - contrast));
+    vec4 value = clamp(f * (c - 0.5) + 0.5 + brightness, 0.0, 1.0);
+    
+    value += won_NoiseCL(pcoord * getPixel(texelCoord).xy, -noiseIntensity, noiseIntensity);
+    value = won_BayerDither8x8(value, vec2(pcoord), ditherStrength) - ditherDarkness;
+
+    imageStore(outputImage, texelCoord, won_ColorLimiterByParts(value, colorStep));
+}

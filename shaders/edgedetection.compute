@@ -1,0 +1,41 @@
+//metastart
+//name: edge_detection
+//metaend
+
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D inputImage;
+layout(rgba32f, binding = 1) uniform image2D outputImage;
+
+void main()
+{
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = ivec2(gl_NumWorkGroups.xy);
+
+    ivec2 offsets[9] = ivec2[](
+        ivec2(-1, -1),
+        ivec2(0, -1),
+        ivec2(1, -1),
+        ivec2(-1, 0),
+        ivec2(0, 0),
+        ivec2(1, 0),
+        ivec2(-1, 1),
+        ivec2(0, 1),
+        ivec2(1, 1)
+    );
+
+    float kernel[9] = float[](
+        -0.0, -1.0, -0.0,
+        -1.0,  4.0, -1.0,
+        -0.0, -1.0, -0.0
+    );
+
+    vec4 sum = vec4(0);
+    for(int i = 0; i < 9; i++)
+    {
+        sum += imageLoad(inputImage, texelCoord + offsets[i]) * kernel[i];
+    }
+
+    imageStore(outputImage, texelCoord, vec4(sum.rgb * 9.0, 1.0));
+}

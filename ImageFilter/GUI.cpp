@@ -61,7 +61,7 @@ void GUI::CreateGui()
 
 	ImGui::Begin("File");
 
-	if (ImGui::CollapsingHeader("Image File"))
+	if (ImGui::CollapsingHeader("Image File", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::Text("Use Camera");
 		ImGui::SameLine();
@@ -91,9 +91,14 @@ void GUI::CreateGui()
 		}
 		else
 		{
+			ImGui::Text("2x Upscale");
+			ImGui::SameLine();
+			ImGui::Checkbox("##2xUpscale", &upscale);
+
 			window.QueueFunc(
 				[this](Renderer& renderer, ImageManager& imageManager)
 				{
+					imageManager.UpscaleImage(upscale);
 					imageManager.CamCapture(0);
 				}
 			);
@@ -117,7 +122,7 @@ void GUI::CreateGui()
 		ImGui::NewLine();
 	}
 
-	if (ImGui::CollapsingHeader("Compute Shader File"))
+	if (ImGui::CollapsingHeader("Compute Shader File", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::Text("Shader Path");
 		ImGui::SameLine();

@@ -10,6 +10,7 @@
 //uniform<float>_vlogb: 2.2
 //uniform<float>_vlogc: 0.8
 //uniform<float>_vlogd: 0.2
+//uniform<int>_subpixelNoise: 0
 //metaend
 
 #version 460 core
@@ -28,6 +29,7 @@ uniform float vloga;
 uniform float vlogb;
 uniform float vlogc;
 uniform float vlogd;
+uniform int subpixelNoise;
 
 /*
 	static.frag
@@ -103,13 +105,14 @@ void main()
 
     ivec2 pcoord = pixelate(texelCoord);
     vec4 c = getPixel(texelCoord);
+    vec4 sc = (1 - subpixelNoise) * c + subpixelNoise * imageLoad(inputImage, texelCoord);
 
     if(equation == 1) c = vloga * log(vlogb * c + vec4(vlogc)) + vec4(vlogd);
     
     float f = (c1 * (contrast + c2)) / (c2 * (c2 - contrast));
     vec4 value = clamp(f * (c - 0.5) + 0.5 + brightness, 0.0, 1.0);
-
-    value += vec4(noiseIntensity * rand(c), noiseIntensity * rand(c * 2), noiseIntensity * rand(c * 3), 0.0);
+    
+    value += vec4(noiseIntensity * rand(c), noiseIntensity * rand(c * 2), noiseIntensity * rand(c * 3), 0.0) + vec4(vec3(noiseIntensity * rand(sc * 4)), 0.0);
 
     imageStore(outputImage, texelCoord, stepColor(value));
 }
