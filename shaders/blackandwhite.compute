@@ -2,17 +2,18 @@
 //name: black_and_white 
 //uniform<int>_pixelateFactor: 3
 //uniform<int>_fullpixelate: 0
-//uniform<int>_equationlog: 1
-//uniform<float>_vloga: 0.9
-//uniform<float>_vlogb: 1.3
-//uniform<float>_vlogc: 0.22
-//uniform<float>_vlogd: 0.8
 //uniform<float>_contrast: 0.6
 //uniform<float>_brightness: -0.3
 //uniform<float>_bgColorR255: 0
 //uniform<float>_bgColorG255: 0
 //uniform<float>_bgColorB255: 0
 //metaend
+
+//uniform<int>_equationlog: 1
+//uniform<float>_vloga: 0.9
+//uniform<float>_vlogb: 1.3
+//uniform<float>_vlogc: 0.22
+//uniform<float>_vlogd: 0.8
 
 #version 460 core
 
@@ -22,16 +23,27 @@ layout(rgba32f, binding = 1) uniform image2D outputImage;
 
 uniform int pixelateFactor;
 uniform int fullpixelate; // boolean
-uniform float vloga;
-uniform float vlogb;
-uniform float vlogc;
-uniform float vlogd;
+
 uniform float contrast;
 uniform float brightness;
 uniform float bgColorR255;
 uniform float bgColorG255;
 uniform float bgColorB255;
-uniform int equationlog;
+
+uniform float Application_Time;
+
+// uniform int equationlog;
+// uniform float vloga;
+// uniform float vlogb;
+// uniform float vlogc;
+// uniform float vlogd;
+
+const int equationlog = 0;
+const float vloga = 0.0;
+const float vlogb = 0.0;
+const float vlogc = 0.0;
+const float vlogd = 0.0;
+
 
 /*
 	static.frag
@@ -108,7 +120,7 @@ void main()
 
 	vec4 color = getPixel(pcoord);
 
-	vec3 cvalue = rand(vec2(pcoord)) <= getPixelBW(color) ? vec3(1.0) : vec3(bgColorR255/255.0, bgColorG255/255.0, bgColorB255/255.0);
+    vec3 cvalue = rand(vec2(pcoord) * Application_Time) <= getPixelBW(color) ? vec3(1.0) : vec3(bgColorR255 / 255.0, bgColorG255 / 255.0, bgColorB255 / 255.0);
 
 	vec4 value = vec4(cvalue, 1.0);
 

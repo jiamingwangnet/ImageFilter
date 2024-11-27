@@ -26,9 +26,12 @@ void Renderer::Init(const Window* window)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	
-	InputManager::BindScroll([this](double x, double y)
+	InputManager::BindScroll([this, window](double x, double y)
 		{
-			this->IncZoom(y * 0.1);
+			if (!(window->GetGUI().GetIO()->WantCaptureMouse))
+			{
+				this->IncZoom(y * 0.1);
+			}
 		}
 	);
 

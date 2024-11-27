@@ -60,7 +60,7 @@ void ShaderBase::SetMat4(const std::string & name, const glm::mat4 & value) cons
 unsigned int ShaderBase::GetUniformLoc(const std::string& name) const
 {
 	GLint loc = glGetUniformLocation(id, name.c_str());
-	if (loc == GL_INVALID_INDEX)
+	if (loc == GL_INVALID_INDEX && willThrow)
 	{
 		std::cerr << ((std::string)"Uniform " + name + " not found in shader.") << std::endl;
 		throw std::runtime_error{ (std::string)"Uniform " + name + " not found in shader." };

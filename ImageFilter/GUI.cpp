@@ -95,11 +95,23 @@ void GUI::CreateGui()
 			ImGui::SameLine();
 			ImGui::Checkbox("##2xUpscale", &upscale);
 
+			ImGui::Text("Device");
+			ImGui::SameLine();
+			if (ImGui::InputInt("##Device", &device, 1, 1))
+			{
+				window.QueueFunc(
+					[this](Renderer& renderer, ImageManager& imageManager)
+					{
+						imageManager.CloseCamera();
+					}
+				);
+			}
+
 			window.QueueFunc(
 				[this](Renderer& renderer, ImageManager& imageManager)
 				{
 					imageManager.UpscaleImage(upscale);
-					imageManager.CamCapture(0);
+					imageManager.CamCapture(device);
 				}
 			);
 		}

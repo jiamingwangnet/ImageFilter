@@ -15,6 +15,9 @@ public:
 		int height;
 		float aspect;
 	};
+
+	static constexpr const char* Application_TimeName = "Application_Time";
+
 public:
 	ImageManager() = default;
 	void Load(const std::string& path); // create a texture

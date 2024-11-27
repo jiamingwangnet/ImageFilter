@@ -54,4 +54,5 @@ private:
 	bool useCamera = false;
 	bool upscale = true;
 	std::string activeShader = "";
+	int device = 0;
 };

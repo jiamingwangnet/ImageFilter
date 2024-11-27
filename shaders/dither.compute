@@ -1,5 +1,5 @@
 //metastart
-//name: pixels 
+//name: dither 
 //uniform<int>_pixelSize: 2
 //uniform<int>_colorStep: 5.0
 //uniform<float>_contrast: 0.3
@@ -24,6 +24,8 @@ uniform float noiseIntensity;
 uniform int subpixelNoise;
 uniform float ditherStrength;
 uniform float ditherDarkness;
+
+uniform float Application_Time;
 
 /*
 	static.frag
@@ -89,6 +91,26 @@ float won_RandRange(float min, float max, float seed)
 	return clamp(floor(won_Random(seed) * (float(max) - float(min) + 1.0) + float(min)), min, max); // clamp incase random returns 1
 }
 
+float won_RandRangeF(float min, float max, vec2 seed)
+{
+    return clamp(won_Random(seed) * (float(max) - float(min)) + float(min), min, max); // clamp incase random returns 1
+}
+
+float won_RandRangeF(float min, float max, vec3 seed)
+{
+    return clamp(won_Random(seed) * (float(max) - float(min)) + float(min), min, max); // clamp incase random returns 1
+}
+
+float won_RandRangeF(float min, float max, vec4 seed)
+{
+    return clamp(won_Random(seed) * (float(max) - float(min)) + float(min), min, max); // clamp incase random returns 1
+}
+
+float won_RandRangeF(float min, float max, float seed)
+{
+    return clamp(won_Random(seed) * (float(max) - float(min)) + float(min), min, max); // clamp incase random returns 1
+}
+
 ivec2 pixelate(ivec2 fragCoord)
 {
 	return ivec2(pixelSize * floor(fragCoord / ivec2(pixelSize, pixelSize)));
@@ -105,7 +127,7 @@ vec4 won_NoiseCL(vec2 seed, float min, float max)
 	float s1 = won_Random(seed * won_Random(seed));
 	float s2 = won_Random(seed * won_Random(seed * won_Random(seed)));
 
-	return vec4(won_RandRange(min, max, s0), won_RandRange(min, max, s1), won_RandRange(min, max, s2), 1.0);
+    return vec4(won_RandRangeF(min, max, s0), won_RandRangeF(min, max, s1), won_RandRangeF(min, max, s2), 1.0);
 }
 
 vec4 won_BayerDither8x8(vec4 cinput, vec2 fragCoords, float strength)
@@ -150,7 +172,7 @@ void main()
     float f = (c1 * (contrast + c2)) / (c2 * (c2 - contrast));
     vec4 value = clamp(f * (c - 0.5) + 0.5 + brightness, 0.0, 1.0);
     
-    value += won_NoiseCL(pcoord * getPixel(texelCoord).xy, -noiseIntensity, noiseIntensity);
+    value += won_NoiseCL(pcoord * getPixel(texelCoord).xy * Application_Time, -noiseIntensity, noiseIntensity);
     value = won_BayerDither8x8(value, vec2(pcoord), ditherStrength) - ditherDarkness;
 
     imageStore(outputImage, texelCoord, won_ColorLimiterByParts(value, colorStep));

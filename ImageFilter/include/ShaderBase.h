@@ -42,6 +42,8 @@ public:
 	void SetMat3(const std::string& name, const glm::mat3& value) const;
 	void SetMat4(const std::string& name, const glm::mat4& value) const;
 
+	void SetWillThrow(bool v) { willThrow = v; }
+
 	virtual void Build() = 0;
 	const std::unordered_map<std::string, ValueTypes>& GetUniforms() { return uniforms; }
 	const std::string& GetSource() const { return source; }
@@ -78,4 +80,6 @@ protected:
 	std::string source;
 
 	std::unordered_map<std::string, ValueTypes> uniforms; // stores the uniforms as a pair of {name, type}
+
+	bool willThrow = true;
 };

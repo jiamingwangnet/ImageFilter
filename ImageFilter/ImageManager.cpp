@@ -4,6 +4,7 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 #include <iostream>
+#include <GLFW/glfw3.h>
 
 void ImageManager::Load(const std::string& path)
 {
@@ -94,12 +95,17 @@ void ImageManager::CamCapture(int device)
 
 void ImageManager::ApplyEffect(const std::string& name)
 {
-	const ComputeShader& shader = ShaderManager::GetShader<ComputeShader>(name);
+	ComputeShader& shader = ShaderManager::GetShader<ComputeShader>(name);
 
 	glBindImageTexture(0, original.texture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
 	glBindImageTexture(1, edited.texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 	shader.Use();
+
+	shader.SetWillThrow(false);
+	shader.SetFloat(Application_TimeName, glfwGetTime());
+	shader.SetWillThrow(true);
+
 	glDispatchCompute((GLuint)original.width, (GLuint)original.height, 1);
 
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT); // make sure writing to image has finished
